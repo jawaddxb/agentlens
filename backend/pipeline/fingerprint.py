@@ -205,9 +205,10 @@ class FingerprintBuilder:
         for hour in range(24):
             for day in range(7):
                 baseline = hour_weights[hour] * day_mults[day]
-                # Blend: 80% deterministic baseline + 20% real data amplified
+                # Blend: 95% deterministic baseline + 5% real data
+                # Real data is sparse and noisy — high blend ratio keeps pattern crisp
                 real = matrix[hour][day]
-                matrix[hour][day] = baseline * 0.80 + real * 0.20
+                matrix[hour][day] = baseline * 0.95 + real * 0.05
 
         # Normalise to 0..1
         max_val = max(max(row) for row in matrix) or 1.0

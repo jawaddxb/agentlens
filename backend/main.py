@@ -428,6 +428,34 @@ async def get_fingerprint(agent_id: int) -> dict:
 # ---------------------------------------------------------------------------
 
 
+@app.get("/api/simulations")
+async def list_simulations() -> list:
+    """List all simulations ordered by most recent."""
+    async with get_db() as db:
+        rows = await db.execute(
+            text(
+                "SELECT id, agent_id, scenario, num_twins, num_rounds, "
+                "divergence_score, status, outcome_distribution, created_at "
+                "FROM simulations ORDER BY id DESC LIMIT 100"
+            )
+        )
+        sims = []
+        for row in rows.mappings():
+            import json as _json
+            sims.append({
+                "id": row["id"],
+                "agent_id": row["agent_id"],
+                "scenario": row["scenario"],
+                "num_twins": row["num_twins"],
+                "num_rounds": row["num_rounds"],
+                "divergence_score": row["divergence_score"],
+                "status": row["status"] or "complete",
+                "outcome_distribution": _json.loads(row["outcome_distribution"]) if row["outcome_distribution"] else {},
+                "created_at": row["created_at"],
+            })
+        return sims
+
+
 @app.post("/api/simulations", response_model=SimulationStatus)
 async def create_simulation(body: SimulationCreate) -> SimulationStatus:
     async with get_db() as db:
