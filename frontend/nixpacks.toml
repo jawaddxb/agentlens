@@ -9,3 +9,5 @@ cmds = ["npm run build", "cp -r .next/static .next/standalone/.next/static", "cp
 
 [start]
 cmd = "node .next/standalone/server.js"
+
+# cache-bust: 1774137105
