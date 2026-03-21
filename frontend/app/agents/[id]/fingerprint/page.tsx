@@ -17,6 +17,7 @@ export default function FingerprintPage() {
   const agent = agents?.find(a => a.id === agentId);
   const fingerprint = fpData?.fingerprint;
   const drift = fpData?.drift;
+  const driftAlerts = fpData?.drift_alerts || drift?.alerts || [];
 
   return (
     <div className="space-y-6">
@@ -56,7 +57,7 @@ export default function FingerprintPage() {
               <div className="px-4 py-3 border-b border-[--border]">
                 <h2 className="text-sm font-medium">Decision Graph</h2>
               </div>
-              <div style={{ height: 500 }}>
+              <div style={{ height: 380 }}>
                 <FingerprintGraph
                   nodes={fingerprint.nodes}
                   edges={fingerprint.edges}
@@ -108,28 +109,31 @@ export default function FingerprintPage() {
               {/* Drift Alerts */}
               <div className="bg-[--surface] border border-[--border] rounded-xl p-4">
                 <h3 className="text-sm font-medium mb-3">Drift Alerts</h3>
-                {drift && drift.alerts && drift.alerts.length > 0 ? (
+                {driftAlerts.length > 0 ? (
                   <div className="space-y-2">
-                    {drift.alerts.map((alert: string, i: number) => (
+                    {driftAlerts.map((alert: any, i: number) => (
                       <motion.div
                         key={i}
                         initial={{ opacity: 0, x: 8 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.1 }}
-                        className="flex items-start gap-2 text-xs"
+                        className="p-2 rounded-lg bg-[#d4a82d]/10 border border-[#d4a82d]/20"
                       >
-                        <AlertTriangle className="w-3 h-3 text-[#d4a82d] mt-0.5 shrink-0" />
-                        <span className="text-[--muted]">{alert}</span>
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="w-3 h-3 text-[#d4a82d] mt-0.5 shrink-0" />
+                          <span className="text-xs text-[--text] font-medium">
+                            {typeof alert === 'string' ? alert : alert.message}
+                          </span>
+                        </div>
+                        {typeof alert === 'object' && alert.current && (
+                          <div className="mt-1.5 flex gap-3 pl-5 text-[10px] font-mono">
+                            <span className="text-[#d4a82d]">now: {alert.current.toFixed(1)}%</span>
+                            <span className="text-[--muted]">baseline: {alert.baseline.toFixed(1)}%</span>
+                            <span className="text-[#d4432d]">+{alert.delta_pct.toFixed(0)}%</span>
+                          </div>
+                        )}
                       </motion.div>
                     ))}
-                    {drift.drift_percentage > 0 && (
-                      <div className="mt-3 pt-3 border-t border-[--border]">
-                        <p className="text-xs text-[--muted]">Overall drift</p>
-                        <p className={`text-lg font-semibold ${drift.drift_percentage > 10 ? 'text-[#d4a82d]' : 'text-[--accent]'}`}>
-                          {drift.drift_percentage.toFixed(1)}%
-                        </p>
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-xs text-[--muted]">

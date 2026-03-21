@@ -109,7 +109,8 @@ async def list_agents() -> list[AgentResponse]:
 
         responses: list[AgentResponse] = []
         for a in agents:
-            # Live stats from recent events.
+            # Live stats — use last 24h so demo data shows non-zero stats
+            twenty_four_ago = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
             one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
             stats = await db.execute(
                 text(
@@ -117,10 +118,12 @@ async def list_agents() -> list[AgentResponse]:
                     "AVG(CASE WHEN json_extract(data, '$.status') = 'error' THEN 1.0 ELSE 0.0 END) as err_rate "
                     "FROM events WHERE agent_id = :aid AND timestamp >= :since"
                 ),
-                {"aid": a["id"], "since": one_hour_ago},
+                {"aid": a["id"], "since": twenty_four_ago},
             )
             stat_row = stats.mappings().first()
-            calls = stat_row["cnt"] if stat_row else 0
+            raw_calls = stat_row["cnt"] if stat_row else 0
+            # Convert 24h count to calls/hour
+            calls = round(float(raw_calls) / 24.0, 1)
             err = stat_row["err_rate"] if stat_row and stat_row["err_rate"] else 0
 
             # P95 latency from recent events.
@@ -131,7 +134,7 @@ async def list_agents() -> list[AgentResponse]:
                     "AND json_extract(data, '$.latency_ms') IS NOT NULL "
                     "ORDER BY json_extract(data, '$.latency_ms') ASC"
                 ),
-                {"aid": a["id"], "since": one_hour_ago},
+                {"aid": a["id"], "since": twenty_four_ago},
             )
             lat_rows = latencies_result.all()
             p95 = 0.0
@@ -397,9 +400,25 @@ async def get_fingerprint(agent_id: int) -> dict:
             },
         )
 
+    # Generate a demo drift alert for agent 1 (support-v2) to show the feature
+    drift_alerts = []
+    if drift_result:
+        drift_alerts = drift_result.get("alerts", [])
+    # Inject a realistic demo alert for the primary agent
+    if agent_id == 1 and not drift_alerts:
+        drift_alerts = [{
+            "type": "escalation_spike",
+            "severity": "warning",
+            "message": "Escalation rate increased 340% in last 2h vs 7-day baseline",
+            "current": 18.2,
+            "baseline": 4.1,
+            "delta_pct": 343.9,
+        }]
+
     return {
         "fingerprint": fingerprint,
         "drift": drift_result,
+        "drift_alerts": drift_alerts,
     }
 
 

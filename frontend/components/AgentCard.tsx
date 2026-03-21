@@ -68,7 +68,7 @@ export default function AgentCard({ agent }: { agent: Agent }) {
           <StatItem label="calls/h" value={agent.calls_per_hour.toLocaleString()} />
           <StatItem
             label="error rate"
-            value={`${(agent.error_rate * 100).toFixed(1)}%`}
+            value={`${agent.error_rate.toFixed(1)}%`}
           />
           <StatItem
             label="p95 latency"

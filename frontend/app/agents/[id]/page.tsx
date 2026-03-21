@@ -132,13 +132,13 @@ export default function AgentDetailPage() {
                     <p>model: {String(event.data.model)}</p>
                   ) : null}
                   {event.data?.tool_name ? (
-                    <p>tool: {String(event.data.tool_name)}({event.data.tool_input ? JSON.stringify(event.data.tool_input).slice(0, 40) : ''})</p>
+                    <p>tool: {String(event.data.tool_name)}({event.data.tool_input ? JSON.stringify(event.data.tool_input).slice(0, 50) : ''})</p>
                   ) : null}
                   {(event.data?.tokens_in || event.data?.tokens_out) ? (
                     <p>tokens: {String(event.data.tokens_in || 0)} in / {String(event.data.tokens_out || 0)} out</p>
                   ) : null}
                   {event.data?.response ? (
-                    <p className="text-[--text] truncate">{String(event.data.response).slice(0, 60)}</p>
+                    <p className="text-[--text] line-clamp-2">{String(event.data.response)}</p>
                   ) : null}
                   {event.data?.sentiment ? (
                     <p>sentiment: {String(event.data.sentiment)}</p>

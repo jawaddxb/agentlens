@@ -150,7 +150,7 @@ export const api = {
 
   // Fingerprint & Drift
   getFingerprint: (agentId: number) =>
-    fetchAPI<{ fingerprint: BehavioralFingerprint; drift: DriftResult | null }>(
+    fetchAPI<{ fingerprint: BehavioralFingerprint; drift: DriftResult | null; drift_alerts: any[] }>(
       `/api/agents/${agentId}/fingerprint`
     ),
 

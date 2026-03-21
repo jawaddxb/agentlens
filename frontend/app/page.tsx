@@ -154,7 +154,7 @@ export default function DashboardPage() {
             {/* Decision Distribution */}
             <div className="bg-[--surface] border border-[--border] rounded-xl p-5">
               <h3 className="text-sm font-medium text-[--muted] mb-4">Decision Distribution</h3>
-              <div className="h-48">
+              <div className="h-64">
                 <DecisionDonut data={Object.keys(decisionDist).length > 0 ? decisionDist : { 'no data': 1 }} />
               </div>
             </div>

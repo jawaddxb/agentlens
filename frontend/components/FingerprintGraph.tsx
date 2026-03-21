@@ -70,8 +70,10 @@ export default function FingerprintGraph({
 
   const updateDimensions = useCallback(() => {
     if (containerRef.current) {
-      const { width, height } = containerRef.current.getBoundingClientRect()
-      setDimensions({ width, height: Math.max(height, 400) })
+      const rect = containerRef.current.getBoundingClientRect()
+      const w = rect.width || 600
+      const h = rect.height || 380
+      setDimensions({ width: w, height: Math.max(h, 320) })
     }
   }, [])
 
@@ -97,10 +99,12 @@ export default function FingerprintGraph({
       .domain(freqExtent[0] === freqExtent[1] ? [0, freqExtent[1]] : freqExtent)
       .range([10, 40])
 
-    // Build simulation nodes & links
-    const simNodes: SimNode[] = nodes.map((n) => ({
+    // Build simulation nodes — initialise positions at centre so force sim converges there
+    const simNodes: SimNode[] = nodes.map((n, i) => ({
       ...n,
       radius: radiusScale(n.frequency),
+      x: width / 2 + (Math.random() - 0.5) * 60,
+      y: height / 2 + (Math.random() - 0.5) * 60,
     }))
 
     const nodeMap = new Map(simNodes.map((n) => [n.id, n]))
@@ -275,13 +279,30 @@ export default function FingerprintGraph({
           .id((d) => d.id)
           .distance(120)
       )
-      .force('charge', d3.forceManyBody().strength(-300))
+      .force('charge', d3.forceManyBody().strength(-250))
       .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('x', d3.forceX(width / 2).strength(0.08))
+      .force('y', d3.forceY(height / 2).strength(0.08))
       .force(
         'collision',
-        d3.forceCollide<SimNode>().radius((d) => d.radius + 8)
+        d3.forceCollide<SimNode>().radius((d) => d.radius + 10)
       )
-      .alphaDecay(0.02)
+      .stop()
+
+    // Run 150 ticks synchronously so nodes are centred before first paint
+    for (let i = 0; i < 150; i++) simulation.tick()
+
+    // Paint initial positions
+    linkSelection
+      .attr('x1', (d) => (d.source as SimNode).x!)
+      .attr('y1', (d) => (d.source as SimNode).y!)
+      .attr('x2', (d) => (d.target as SimNode).x!)
+      .attr('y2', (d) => (d.target as SimNode).y!)
+    nodeSelection.attr('transform', (d) => `translate(${d.x},${d.y})`)
+
+    simulation
+      .alphaDecay(0.03)
+      .restart()
       .on('tick', () => {
         linkSelection
           .attr('x1', (d) => (d.source as SimNode).x!)

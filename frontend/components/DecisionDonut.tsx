@@ -61,12 +61,12 @@ export default function DecisionDonut({ data }: DecisionDonutProps) {
 
   const options = {
     responsive: true,
-    maintainAspectRatio: true,
+    maintainAspectRatio: false,
     cutout: '68%',
     plugins: {
       legend: {
         display: true,
-        position: 'right' as const,
+        position: 'bottom' as const,
         labels: {
           color: '#888888',
           font: {
@@ -148,15 +148,8 @@ export default function DecisionDonut({ data }: DecisionDonutProps) {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-5">
-      <div className="mb-3">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-muted">
-          Decision Distribution
-        </span>
-      </div>
-      <div className="mx-auto max-w-sm">
-        <Doughnut data={chartData} options={options} plugins={[centerTextPlugin]} />
-      </div>
+    <div className="w-full h-full">
+      <Doughnut data={chartData} options={options} plugins={[centerTextPlugin]} />
     </div>
   )
 }

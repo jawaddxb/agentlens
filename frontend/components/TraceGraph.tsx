@@ -152,15 +152,22 @@ export default function TraceGraph({ trace }: { trace: Trace }) {
       const t2 = new Date(events[i + 1].timestamp).getTime()
       const latency = Math.max(0, t2 - t1)
 
+      // Curved connector with visible color
+      const midY = (y1 + y2) / 2
       edgeGroup
-        .append('line')
-        .attr('x1', centerX)
-        .attr('y1', y1)
-        .attr('x2', centerX)
-        .attr('y2', y2)
-        .attr('stroke', '#333333')
+        .append('path')
+        .attr('d', `M ${centerX} ${y1} C ${centerX} ${midY}, ${centerX} ${midY}, ${centerX} ${y2}`)
+        .attr('stroke', getEventColor(events[i].event_type))
         .attr('stroke-width', 1.5)
-        .attr('stroke-dasharray', '4,3')
+        .attr('stroke-opacity', 0.4)
+        .attr('fill', 'none')
+
+      // Arrow marker at end
+      edgeGroup
+        .append('polygon')
+        .attr('points', `${centerX - 4},${y2 - 6} ${centerX + 4},${y2 - 6} ${centerX},${y2}`)
+        .attr('fill', getEventColor(events[i].event_type))
+        .attr('opacity', 0.5)
 
       if (latency > 0) {
         edgeGroup
