@@ -700,17 +700,25 @@ async def seed_demo_data() -> dict:
             )
             agent_id = agent_result.lastrowid
 
-            # Generate traces and events.
-            num_traces = random.randint(10, 20)
+            # Generate traces and events — more traces = richer heatmap
+            num_traces = random.randint(30, 50)
             agent_event_count = 0
 
             for t_idx in range(num_traces):
                 trace_id = uuid.uuid4().hex[:16]
                 flow = random.choice(_TRACE_FLOWS)
 
-                # Spread traces across the last 24 hours.
+                # Spread traces across the last 7 days with realistic business-hour peaks.
+                days_back = random.uniform(0, 7)
+                # Business hours bias: weight towards 8am-8pm
+                hour_weights = [0.1, 0.05, 0.05, 0.05, 0.1, 0.2, 0.5, 1.0,
+                                1.5, 2.0, 2.5, 2.8, 2.5, 2.2, 2.5, 2.8,
+                                3.0, 2.8, 2.5, 2.0, 1.5, 1.0, 0.5, 0.2]
+                hour_of_day = random.choices(range(24), weights=hour_weights)[0]
                 trace_start = now - timedelta(
-                    hours=random.uniform(0.1, 24),
+                    days=days_back,
+                ) - timedelta(hours=now.hour) + timedelta(
+                    hours=hour_of_day,
                     minutes=random.uniform(0, 59),
                 )
 

@@ -154,19 +154,29 @@ export default function TemporalHeatmap({ data }: TemporalHeatmapProps) {
   return (
     <div
       ref={containerRef}
-      className="relative w-full overflow-hidden rounded-xl border border-border bg-surface p-4"
+      className="relative w-full overflow-hidden"
     >
       <svg ref={svgRef} className="w-full" />
+      {/* Legend */}
+      <div className="mt-3 flex items-center gap-2 px-1">
+        <span className="text-[10px] font-mono" style={{ color: '#888888' }}>less</span>
+        <div className="flex gap-0.5">
+          {['#1c1c1c','#0e3628','#0d5040','#0d6e57','#0d8c6e','#2dd4a8'].map((c, i) => (
+            <div key={i} className="w-5 h-3 rounded-sm" style={{ backgroundColor: c }} />
+          ))}
+        </div>
+        <span className="text-[10px] font-mono" style={{ color: '#888888' }}>more</span>
+      </div>
       {tooltip && (
         <div
-          className="pointer-events-none absolute z-50 rounded-md border border-border bg-surface2 px-3 py-2 shadow-xl"
+          className="pointer-events-none absolute z-50 rounded-md border border-[--border] bg-[--surface-2] px-3 py-2 shadow-xl"
           style={{ left: tooltip.x + 12, top: tooltip.y - 40 }}
         >
-          <div className="font-mono text-[10px] text-muted">
+          <div className="font-mono text-[10px] text-[--muted]">
             {tooltip.day}, {String(tooltip.hour).padStart(2, '0')}:00
           </div>
-          <div className="font-mono text-sm font-semibold text-accent">
-            {tooltip.value.toLocaleString()}
+          <div className="font-mono text-sm font-semibold text-[--accent]">
+            {tooltip.value > 0 ? `${(tooltip.value * 100).toFixed(1)}% activity` : 'No activity'}
           </div>
         </div>
       )}

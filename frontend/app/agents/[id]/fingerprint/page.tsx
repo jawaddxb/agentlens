@@ -175,7 +175,14 @@ export default function FingerprintPage() {
               <h2 className="text-sm font-medium">Temporal Heatmap — Activity by Hour &amp; Day</h2>
             </div>
             <div className="p-4">
-              <TemporalHeatmap data={fingerprint.temporal_heatmap} />
+              <TemporalHeatmap data={
+                // Backend returns 24×7 (hours×days), component expects 7×24 (days×hours) — transpose
+                fingerprint.temporal_heatmap?.[0]?.length === 7
+                  ? Array.from({ length: 7 }, (_, day) =>
+                      fingerprint.temporal_heatmap.map((hourRow: number[]) => hourRow[day])
+                    )
+                  : fingerprint.temporal_heatmap
+              } />
             </div>
           </div>
         </>
