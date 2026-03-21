@@ -204,14 +204,9 @@ class FingerprintBuilder:
 
         for hour in range(24):
             for day in range(7):
-                baseline = hour_weights[hour] * day_mults[day]
-                real = matrix[hour][day]
-                # Off-hours (0-6am): 100% baseline — no real noise bleeds through
-                # Business hours (7-21): 95% baseline + 5% real data
-                if hour < 7:
-                    matrix[hour][day] = baseline
-                else:
-                    matrix[hour][day] = baseline * 0.95 + real * 0.05
+                # Pure deterministic baseline — no real-data noise.
+                # Gives a perfectly crisp, consistent business-hours pattern every time.
+                matrix[hour][day] = hour_weights[hour] * day_mults[day]
 
         # Normalise to 0..1
         max_val = max(max(row) for row in matrix) or 1.0
