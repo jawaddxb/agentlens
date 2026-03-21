@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, GitFork, Play, Clock, Zap, AlertTriangle, ChevronRight } from 'lucide-react';
+import { ArrowLeft, GitFork, Play, Clock, Zap, AlertTriangle, ChevronRight, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 import TraceGraph from '@/components/TraceGraph';
 import { useTraces, useAgents } from '@/lib/hooks';
 import type { Trace, AgentEvent } from '@/lib/api';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
 
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
@@ -38,11 +40,26 @@ export default function AgentDetailPage() {
   const { data: traces, isLoading } = useTraces(agentId);
   const [selectedTrace, setSelectedTrace] = useState<Trace | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<AgentEvent | null>(null);
+  const [replaying, setReplaying] = useState(false);
 
   const agent = agents?.find(a => a.id === agentId);
 
   // Select first trace by default
   const activeTrace = selectedTrace || (traces && traces.length > 0 ? traces[0] : null);
+
+  async function handleReplay() {
+    if (!activeTrace) return;
+    setReplaying(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/traces/${activeTrace.id}/replay`, { method: 'POST' });
+      if (!res.ok) throw new Error('Replay failed');
+      const data = await res.json();
+      router.push(`/simulations/${data.simulation_id}`);
+    } catch (err) {
+      console.error('Replay error:', err);
+      setReplaying(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -68,13 +85,23 @@ export default function AgentDetailPage() {
             <span className="hidden xs:inline">Behavioral </span>Fingerprint
           </Link>
           {activeTrace && (
-            <Link
-              href={`/simulations/new?agent=${agentId}&trace=${activeTrace.id}`}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm bg-[--accent] text-black font-medium rounded-lg hover:opacity-90 transition-opacity"
-            >
-              <GitFork className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              Fork Sim
-            </Link>
+            <>
+              <button
+                onClick={handleReplay}
+                disabled={replaying}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm bg-[--surface] border border-[--border] rounded-lg text-[--muted] hover:text-[--text] hover:border-[--accent] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RotateCcw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${replaying ? 'animate-spin' : ''}`} />
+                <span>{replaying ? 'Replaying…' : 'Replay'}</span>
+              </button>
+              <Link
+                href={`/simulations/new?agent=${agentId}&trace=${activeTrace.id}`}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm bg-[--accent] text-black font-medium rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <GitFork className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                Fork Sim
+              </Link>
+            </>
           )}
         </div>
       </div>
