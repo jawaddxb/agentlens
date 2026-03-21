@@ -155,7 +155,13 @@ export default function DashboardPage() {
             <div className="bg-[--surface] border border-[--border] rounded-xl p-5">
               <h3 className="text-sm font-medium text-[--muted] mb-4">Decision Distribution</h3>
               <div className="h-64">
-                <DecisionDonut data={Object.keys(decisionDist).length > 0 ? decisionDist : { 'no data': 1 }} />
+                {Object.keys(decisionDist).length > 0 ? (
+                  <DecisionDonut data={decisionDist} />
+                ) : (
+                  <div className="flex h-full items-center justify-center">
+                    <div className="w-32 h-32 rounded-full border-4 border-[--border] border-t-[--accent] animate-spin opacity-40" />
+                  </div>
+                )}
               </div>
             </div>
 
