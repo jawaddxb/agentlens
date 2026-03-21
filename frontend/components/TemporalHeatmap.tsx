@@ -57,15 +57,23 @@ export default function TemporalHeatmap({ data }: TemporalHeatmapProps) {
     const allValues = data.flat()
     const maxVal = d3.max(allValues) ?? 1
 
-    // Power scale exponent=2 — crushes low values to near-black, punches up high values.
-    // e.g. value=0.15 (Sat) maps to 0.15²=0.02 → almost black
-    //      value=0.85 (Mon 10am) maps to 0.85²=0.72 → bright teal
-    const colorScale = d3
-      .scalePow<string>()
-      .exponent(2)
-      .domain([0, maxVal])
-      .range(['#0d0d0d', '#2dd4a8'])
-      .interpolate(d3.interpolateRgb)
+    // Hard threshold color mapping — guarantees crisp, unambiguous visual pattern.
+    // Business hours (>0.5) → bright teal, weekends (0.05-0.2) → very dark, nights (<0.05) → black
+    const cellColor = (v: number): string => {
+      const norm = maxVal > 0 ? v / maxVal : 0
+      if (norm >= 0.5) {
+        // Business hours: interpolate through bright teal spectrum
+        const t = (norm - 0.5) / 0.5  // 0→1 within the bright range
+        return d3.interpolateRgb('#1a7a6a', '#2dd4a8')(t)
+      } else if (norm >= 0.08) {
+        // Shoulder / Saturday: dark muted teal
+        const t = (norm - 0.08) / 0.42
+        return d3.interpolateRgb('#0d1f1c', '#1a3a34')(t)
+      } else {
+        // Nights / Sunday: near-black
+        return '#0a0f0e'
+      }
+    }
 
     const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
@@ -116,8 +124,8 @@ export default function TemporalHeatmap({ data }: TemporalHeatmapProps) {
           .attr('width', cellSize - cellGap)
           .attr('height', cellSize - cellGap)
           .attr('rx', 2)
-          .attr('fill', colorScale(value))
-          .attr('stroke', value > 0 ? colorScale(value) : 'transparent')
+          .attr('fill', cellColor(value))
+          .attr('stroke', value > 0 ? cellColor(value) : 'transparent')
           .attr('stroke-width', 0.5)
           .attr('stroke-opacity', 0.3)
           .style('cursor', 'crosshair')
@@ -165,7 +173,7 @@ export default function TemporalHeatmap({ data }: TemporalHeatmapProps) {
       <div className="mt-3 flex items-center gap-2 px-1">
         <span className="text-[10px] font-mono" style={{ color: '#888888' }}>less</span>
         <div className="flex gap-0.5">
-          {['#1c1c1c','#0e3628','#0d5040','#0d6e57','#0d8c6e','#2dd4a8'].map((c, i) => (
+          {['#0a0f0e','#0d1f1c','#1a3a34','#1a6a5a','#1a7a6a','#2dd4a8'].map((c, i) => (
             <div key={i} className="w-5 h-3 rounded-sm" style={{ backgroundColor: c }} />
           ))}
         </div>
