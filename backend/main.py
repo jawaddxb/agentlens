@@ -9,6 +9,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 try:
@@ -825,6 +826,240 @@ def _build_event_data(event_type: str, latency_ms: float) -> dict:
         base["tool_name"] = "escalate_to_human"
 
     return base
+
+
+# ---------------------------------------------------------------------------
+# Ingest endpoint (SDK → backend)
+# ---------------------------------------------------------------------------
+
+
+class IngestEvent(BaseModel):
+    agent_name: str
+    event_type: str
+    trace_id: str | None = None
+    data: dict = Field(default_factory=dict)
+    timestamp: str | None = None
+    api_key: str | None = None
+
+
+class IngestResponse(BaseModel):
+    ok: bool
+    event_id: int
+    agent_id: int
+
+
+async def _upsert_agent_by_name(db: Any, name: str) -> int:
+    """Return agent_id for name, creating if not present."""
+    row = await db.execute(
+        text("SELECT id FROM agents WHERE name = :name"),
+        {"name": name},
+    )
+    existing = row.mappings().first()
+    if existing:
+        return int(existing["id"])
+    # Create new agent
+    now = datetime.now(timezone.utc).isoformat()
+    result = await db.execute(
+        text(
+            "INSERT INTO agents (name, description, connector_type, status, config, created_at) "
+            "VALUES (:name, :desc, 'webhook', 'active', '{}', :now)"
+        ),
+        {"name": name, "desc": f"Auto-created via SDK ingest", "now": now},
+    )
+    return int(result.lastrowid)
+
+
+async def _insert_event(db: Any, agent_id: int, payload: IngestEvent) -> int:
+    trace_id = payload.trace_id or uuid.uuid4().hex[:16]
+    ts = payload.timestamp or datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc).isoformat()
+    result = await db.execute(
+        text(
+            "INSERT INTO events (agent_id, trace_id, event_type, data, timestamp, created_at) "
+            "VALUES (:aid, :tid, :et, :data, :ts, :now)"
+        ),
+        {
+            "aid": agent_id,
+            "tid": trace_id,
+            "et": payload.event_type,
+            "data": json.dumps(payload.data),
+            "ts": ts,
+            "now": now,
+        },
+    )
+    return int(result.lastrowid)
+
+
+@app.post("/api/ingest", response_model=IngestResponse)
+async def ingest_sdk_event(body: IngestEvent) -> IngestResponse:
+    """Accept events from the AgentLens SDK."""
+    async with get_db() as db:
+        agent_id = await _upsert_agent_by_name(db, body.agent_name)
+        event_id = await _insert_event(db, agent_id, body)
+    return IngestResponse(ok=True, event_id=event_id, agent_id=agent_id)
+
+
+@app.post("/api/ingest/batch")
+async def ingest_sdk_batch(body: list[IngestEvent]) -> dict:
+    """Accept up to 500 events in a single batch from the AgentLens SDK."""
+    if len(body) > 500:
+        raise HTTPException(status_code=400, detail="Batch limit is 500 events")
+    results = []
+    async with get_db() as db:
+        for payload in body:
+            agent_id = await _upsert_agent_by_name(db, payload.agent_name)
+            event_id = await _insert_event(db, agent_id, payload)
+            results.append({"event_id": event_id, "agent_id": agent_id})
+    return {"ok": True, "count": len(results), "results": results}
+
+
+# ---------------------------------------------------------------------------
+# Governance summary endpoint
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/governance/summary")
+async def governance_summary() -> dict:
+    """EU AI Act Article 9 compliance summary across all agents."""
+    async with get_db() as db:
+        # Total events
+        total_row = await db.execute(text("SELECT COUNT(*) as cnt FROM events"))
+        total_events = total_row.scalar() or 0
+
+        # Escalation count
+        esc_row = await db.execute(
+            text("SELECT COUNT(*) as cnt FROM events WHERE event_type = 'escalation'")
+        )
+        escalation_count = esc_row.scalar() or 0
+
+        # Error count / error rate
+        err_row = await db.execute(
+            text(
+                "SELECT COUNT(*) as cnt FROM events "
+                "WHERE event_type = 'error' OR json_extract(data, '$.status') = 'error'"
+            )
+        )
+        error_count = err_row.scalar() or 0
+        error_rate = round(error_count / max(total_events, 1) * 100, 2)
+
+        # Simulation count
+        sim_row = await db.execute(text("SELECT COUNT(*) as cnt FROM simulations"))
+        simulation_count = sim_row.scalar() or 0
+
+        # Agents monitored
+        agents_row = await db.execute(text("SELECT COUNT(DISTINCT id) as cnt FROM agents"))
+        agents_monitored = agents_row.scalar() or 0
+
+        # Unreviewed escalations — defined as escalation events in last 24h
+        one_day_ago = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+        unreviewed_row = await db.execute(
+            text(
+                "SELECT COUNT(*) as cnt FROM events "
+                "WHERE event_type = 'escalation' AND timestamp >= :since"
+            ),
+            {"since": one_day_ago},
+        )
+        unreviewed_escalations = unreviewed_row.scalar() or 0
+
+    # Compliance score: 100 - (error_rate * 0.5) - (escalation% * 0.3) - (unreviewed * 2, capped at 20)
+    escalation_pct = round(escalation_count / max(total_events, 1) * 100, 2)
+    score = 100.0
+    score -= error_rate * 0.5
+    score -= escalation_pct * 0.3
+    score -= min(unreviewed_escalations * 2, 20)
+    compliance_score = round(max(0.0, min(100.0, score)), 1)
+
+    return {
+        "total_events": total_events,
+        "escalation_count": escalation_count,
+        "error_rate": error_rate,
+        "simulation_count": simulation_count,
+        "unreviewed_escalations": unreviewed_escalations,
+        "agents_monitored": agents_monitored,
+        "compliance_score": compliance_score,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Replay Trace
+# ---------------------------------------------------------------------------
+
+
+@app.post("/api/traces/{trace_id}/replay")
+async def replay_trace(trace_id: str) -> dict:
+    """Create a 1-twin 1-round simulation seeded from an existing trace."""
+    async with get_db() as db:
+        # Fetch events for this trace
+        rows = await db.execute(
+            text(
+                "SELECT * FROM events WHERE trace_id = :tid ORDER BY timestamp ASC LIMIT 100"
+            ),
+            {"tid": trace_id},
+        )
+        events = rows.mappings().all()
+
+    if not events:
+        raise HTTPException(status_code=404, detail=f"Trace '{trace_id}' not found")
+
+    agent_id = events[0]["agent_id"]
+
+    # Build fingerprint from trace events
+    event_dicts = []
+    for e in events:
+        data = e["data"]
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except (json.JSONDecodeError, TypeError):
+                data = {}
+        event_dicts.append({
+            "event_type": e["event_type"],
+            "agent_id": e["agent_id"],
+            "trace_id": e["trace_id"],
+            "timestamp": e["timestamp"],
+            "data": data,
+        })
+
+    builder = FingerprintBuilder()
+    fingerprint = builder.build(event_dicts, agent_id=agent_id)
+
+    async with get_db() as db:
+        now = datetime.now(timezone.utc)
+        config = {
+            "num_twins": 1,
+            "num_rounds": 1,
+            "options": {"replay_trace_id": trace_id},
+            "progress": 0.0,
+            "current_round": 0,
+            "total_rounds": 1,
+        }
+        result = await db.execute(
+            text(
+                "INSERT INTO simulations (agent_id, scenario, config, status, created_at) "
+                "VALUES (:aid, :scenario, :cfg, 'pending', :now)"
+            ),
+            {
+                "aid": agent_id,
+                "scenario": "replay",
+                "cfg": json.dumps(config),
+                "now": now.isoformat(),
+            },
+        )
+        sim_id = int(result.lastrowid)
+
+    # Run simulation in background
+    asyncio.create_task(
+        _run_simulation_background(
+            agent_id=agent_id,
+            scenario="replay",
+            num_twins=1,
+            num_rounds=1,
+            fingerprint=fingerprint,
+            simulation_id=sim_id,
+        )
+    )
+
+    return {"simulation_id": sim_id}
 
 
 # ---------------------------------------------------------------------------
