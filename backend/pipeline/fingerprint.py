@@ -196,12 +196,13 @@ class FingerprintBuilder:
         # Build a strong business-hours signal.
         # Deterministic weights — no randomness so the pattern is always crisp.
         # Peak = 1.0 at 16:00 Mon–Fri, floor ≈ 0.02 overnight/weekend.
-        hour_weights = [0.03, 0.02, 0.02, 0.02, 0.03, 0.07, 0.18, 0.45,
-                        0.82, 1.35, 1.85, 2.20, 2.10, 1.95, 2.05, 2.20,
-                        2.30, 2.10, 1.80, 1.40, 0.95, 0.60, 0.30, 0.10]
-        # day_mult: Mon-Fri=1.0, Sat=0.15, Sun=0.06
-        # Low weekend multipliers ensure crisp visual contrast on the heatmap
-        day_mults = [1.0, 1.0, 1.0, 1.0, 1.0, 0.15, 0.06]
+        # Flat plateau 9-17 so ALL business-hour cells render at peak brightness.
+        # Shoulders ramp up/down, nights near-zero, weekends crushed.
+        hour_weights = [0.01, 0.01, 0.01, 0.01, 0.02, 0.05, 0.20, 0.55,
+                        0.80, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00,
+                        1.00, 1.00, 0.55, 0.25, 0.10, 0.05, 0.02, 0.01]
+        # day_mult: Mon-Fri=1.0, Sat=0.12, Sun=0.04 — weekends near-black
+        day_mults = [1.0, 1.0, 1.0, 1.0, 1.0, 0.12, 0.04]
 
         for hour in range(24):
             for day in range(7):
