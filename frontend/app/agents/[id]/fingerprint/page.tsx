@@ -22,21 +22,21 @@ export default function FingerprintPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href={`/agents/${agentId}`} className="p-2 hover:bg-[--surface-2] rounded-lg transition-colors">
+      <div className="flex items-center gap-3">
+        <Link href={`/agents/${agentId}`} className="p-2 hover:bg-[--surface-2] rounded-lg transition-colors shrink-0">
           <ArrowLeft className="w-5 h-5 text-[--muted]" />
         </Link>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">
             Behavioral Fingerprint
           </h1>
-          <p className="text-sm text-[--muted]">
+          <p className="text-sm text-[--muted] truncate">
             {agent?.name || `Agent #${agentId}`} — based on recent traces
           </p>
         </div>
-        <button className="ml-auto flex items-center gap-2 px-4 py-2 text-sm bg-[--surface] border border-[--border] rounded-lg text-[--muted] hover:text-[--text] hover:border-[--accent] transition-all">
-          <Download className="w-4 h-4" />
-          Export
+        <button className="shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm bg-[--surface] border border-[--border] rounded-lg text-[--muted] hover:text-[--text] hover:border-[--accent] transition-all">
+          <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <span className="hidden sm:inline">Export</span>
         </button>
       </div>
 
@@ -57,7 +57,7 @@ export default function FingerprintPage() {
               <div className="px-4 py-3 border-b border-[--border]">
                 <h2 className="text-sm font-medium">Decision Graph</h2>
               </div>
-              <div style={{ height: 380 }}>
+              <div className="h-64 sm:h-80 lg:h-96">
                 <FingerprintGraph
                   nodes={fingerprint.nodes}
                   edges={fingerprint.edges}

@@ -49,9 +49,9 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-semibold tracking-tight">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+          <h1 className="text-2xl font-semibold tracking-tight shrink-0">
             Agents
             {activeAgents.length > 0 && (
               <span className="ml-2 text-sm font-normal text-[--muted]">
@@ -66,22 +66,22 @@ export default function DashboardPage() {
               placeholder="Search agents..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-[--surface] border border-[--border] rounded-lg text-sm text-[--text] placeholder:text-[--muted] focus:outline-none focus:border-[--accent] transition-colors w-64"
+              className="pl-10 pr-4 py-2 bg-[--surface] border border-[--border] rounded-lg text-sm text-[--text] placeholder:text-[--muted] focus:outline-none focus:border-[--accent] transition-colors w-full sm:w-56"
             />
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={handleSeed}
             disabled={seeding}
-            className="flex items-center gap-2 px-4 py-2 text-sm bg-[--surface] border border-[--border] rounded-lg text-[--muted] hover:text-[--text] hover:border-[--accent] transition-all disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm bg-[--surface] border border-[--border] rounded-lg text-[--muted] hover:text-[--text] hover:border-[--accent] transition-all disabled:opacity-50"
           >
-            <Activity className="w-4 h-4" />
-            {seeding ? 'Seeding...' : 'Seed Demo Data'}
+            <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            {seeding ? 'Seeding...' : 'Seed Demo'}
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 text-sm bg-[--accent] text-black font-medium rounded-lg hover:opacity-90 transition-opacity">
-            <Plus className="w-4 h-4" />
-            Connect Agent
+          <button className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm bg-[--accent] text-black font-medium rounded-lg hover:opacity-90 transition-opacity">
+            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            Connect
           </button>
         </div>
       </div>

@@ -47,31 +47,33 @@ export default function AgentDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/" className="p-2 hover:bg-[--surface-2] rounded-lg transition-colors">
-          <ArrowLeft className="w-5 h-5 text-[--muted]" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {agent?.name || `Agent #${agentId}`}
-          </h1>
-          <p className="text-sm text-[--muted]">{agent?.description || 'AI Agent'}</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link href="/" className="p-2 hover:bg-[--surface-2] rounded-lg transition-colors shrink-0">
+            <ArrowLeft className="w-5 h-5 text-[--muted]" />
+          </Link>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight truncate">
+              {agent?.name || `Agent #${agentId}`}
+            </h1>
+            <p className="text-sm text-[--muted] truncate">{agent?.description || 'AI Agent'}</p>
+          </div>
         </div>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:ml-auto sm:gap-3 flex-wrap">
           <Link
             href={`/agents/${agentId}/fingerprint`}
-            className="flex items-center gap-2 px-4 py-2 text-sm bg-[--surface] border border-[--border] rounded-lg text-[--muted] hover:text-[--text] hover:border-[--accent] transition-all"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm bg-[--surface] border border-[--border] rounded-lg text-[--muted] hover:text-[--text] hover:border-[--accent] transition-all"
           >
-            <Zap className="w-4 h-4" />
-            Behavioral Fingerprint
+            <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="hidden xs:inline">Behavioral </span>Fingerprint
           </Link>
           {activeTrace && (
             <Link
               href={`/simulations/new?agent=${agentId}&trace=${activeTrace.id}`}
-              className="flex items-center gap-2 px-4 py-2 text-sm bg-[--accent] text-black font-medium rounded-lg hover:opacity-90 transition-opacity"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm bg-[--accent] text-black font-medium rounded-lg hover:opacity-90 transition-opacity"
             >
-              <GitFork className="w-4 h-4" />
-              Fork to Simulation
+              <GitFork className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              Fork Sim
             </Link>
           )}
         </div>

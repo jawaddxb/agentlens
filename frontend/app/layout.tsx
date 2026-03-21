@@ -62,35 +62,37 @@ function LensIcon() {
 function Navbar() {
   return (
     <nav className="sticky top-0 z-50 border-b border-border bg-bg/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-6">
-        <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2.5 text-accent">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 md:px-6">
+        {/* Left: logo + nav links */}
+        <div className="flex items-center gap-4 md:gap-8 min-w-0">
+          <Link href="/" className="flex items-center gap-2 text-accent shrink-0">
             <LensIcon />
-            <span className="text-[15px] font-semibold tracking-tight">
+            <span className="text-[15px] font-semibold tracking-tight hidden xs:inline">
               AgentLens
             </span>
           </Link>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 md:gap-1">
             <Link
               href="/"
-              className="rounded-md px-3 py-1.5 text-[13px] font-medium text-muted transition-colors hover:bg-surface hover:text-text"
+              className="rounded-md px-2 md:px-3 py-1.5 text-[13px] font-medium text-muted transition-colors hover:bg-surface hover:text-text whitespace-nowrap"
             >
               Agents
             </Link>
             <Link
               href="/simulations/new"
-              className="rounded-md px-3 py-1.5 text-[13px] font-medium text-muted transition-colors hover:bg-surface hover:text-text"
+              className="rounded-md px-2 md:px-3 py-1.5 text-[13px] font-medium text-muted transition-colors hover:bg-surface hover:text-text whitespace-nowrap"
             >
               Simulations
             </Link>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Right: CTA — icon-only on mobile, full text on desktop */}
+        <div className="flex items-center gap-3 shrink-0">
           <button
             type="button"
-            className="flex items-center gap-1.5 rounded-md border border-accent/40 px-3 py-1.5 text-[13px] font-medium text-accent transition-colors hover:border-accent hover:bg-accent/10 cursor-pointer"
+            className="flex items-center gap-1.5 rounded-md border border-accent/40 px-2.5 md:px-3 py-1.5 text-[13px] font-medium text-accent transition-colors hover:border-accent hover:bg-accent/10 cursor-pointer"
           >
             <svg
               width="14"
@@ -98,6 +100,7 @@ function Navbar() {
               viewBox="0 0 14 14"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
+              className="shrink-0"
             >
               <path
                 d="M7 1.75V12.25M1.75 7H12.25"
@@ -106,7 +109,7 @@ function Navbar() {
                 strokeLinecap="round"
               />
             </svg>
-            Connect Agent
+            <span className="hidden sm:inline">Connect Agent</span>
           </button>
         </div>
       </div>
