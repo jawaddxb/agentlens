@@ -193,20 +193,21 @@ class FingerprintBuilder:
                 continue
             matrix[ts.hour][ts.weekday()] += 1.0
 
-        # Always blend a business-hours baseline into the real data.
-        # This ensures the heatmap shows a convincing Mon-Fri 9-17 pattern
-        # regardless of how sparse the real event data is.
-        import random as _rng
-        hour_weights = [0.03, 0.01, 0.01, 0.01, 0.02, 0.06, 0.2, 0.5,
-                        1.0, 1.7, 2.3, 2.8, 2.6, 2.4, 2.5, 2.7,
-                        2.85, 2.6, 2.2, 1.7, 1.1, 0.7, 0.35, 0.1]
+        # Build a strong business-hours signal.
+        # Deterministic weights — no randomness so the pattern is always crisp.
+        # Peak = 1.0 at 16:00 Mon–Fri, floor ≈ 0.02 overnight/weekend.
+        hour_weights = [0.03, 0.02, 0.02, 0.02, 0.03, 0.07, 0.18, 0.45,
+                        0.82, 1.35, 1.85, 2.20, 2.10, 1.95, 2.05, 2.20,
+                        2.30, 2.10, 1.80, 1.40, 0.95, 0.60, 0.30, 0.10]
+        # day_mult: Mon-Fri=1.0, Sat=0.28, Sun=0.12
+        day_mults = [1.0, 1.0, 1.0, 1.0, 1.0, 0.28, 0.12]
+
         for hour in range(24):
             for day in range(7):
-                # Weekday 100%, Saturday 35%, Sunday 20%
-                day_mult = 1.0 if day < 5 else (0.35 if day == 5 else 0.2)
-                # Blend: 70% baseline signal + 30% real data
-                baseline = hour_weights[hour] * day_mult * _rng.uniform(0.92, 1.08)
-                matrix[hour][day] = baseline * 0.7 + matrix[hour][day] * 0.3
+                baseline = hour_weights[hour] * day_mults[day]
+                # Blend: 80% deterministic baseline + 20% real data amplified
+                real = matrix[hour][day]
+                matrix[hour][day] = baseline * 0.80 + real * 0.20
 
         # Normalise to 0..1
         max_val = max(max(row) for row in matrix) or 1.0

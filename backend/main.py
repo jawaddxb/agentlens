@@ -702,7 +702,7 @@ async def seed_demo_data() -> dict:
             agent_id = agent_result.lastrowid
 
             # Generate traces and events — more traces = richer heatmap
-            num_traces = random.randint(30, 50)
+            num_traces = random.randint(60, 80)  # more traces = 1000+ events for credible demo
             agent_event_count = 0
 
             for t_idx in range(num_traces):
