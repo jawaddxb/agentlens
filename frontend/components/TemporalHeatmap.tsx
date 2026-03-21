@@ -57,10 +57,13 @@ export default function TemporalHeatmap({ data }: TemporalHeatmapProps) {
     const allValues = data.flat()
     const maxVal = d3.max(allValues) ?? 1
 
+    // Power scale with exponent 0.5 (square-root) — amplifies low-mid differences
+    // so weekend dim cells look clearly dark while business-hours cells glow bright
     const colorScale = d3
-      .scaleLinear<string>()
+      .scalePow<string>()
+      .exponent(0.5)
       .domain([0, maxVal])
-      .range(['#1a1a1a', '#2dd4a8'])
+      .range(['#111111', '#2dd4a8'])
       .interpolate(d3.interpolateRgb)
 
     const svg = d3.select(svgRef.current)
