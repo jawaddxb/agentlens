@@ -146,7 +146,7 @@ export default function TemporalHeatmap({ data }: TemporalHeatmapProps) {
           })
           .on('mouseleave', function () {
             d3.select(this)
-              .attr('stroke', value > 0 ? colorScale(value) : 'transparent')
+              .attr('stroke', value > 0 ? cellColor(value) : 'transparent')
               .attr('stroke-width', 0.5)
               .attr('stroke-opacity', 0.3)
             setTooltip(null)
