@@ -1,199 +1,118 @@
 'use client'
 
-import { useRef, useEffect, useState, useCallback } from 'react'
-import * as d3 from 'd3'
+import { useState } from 'react'
 
 interface TemporalHeatmapProps {
   data: number[][] // 7 rows (Mon-Sun) x 24 cols (hours 0-23)
 }
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const PADDING = { top: 28, right: 16, bottom: 16, left: 40 }
+const HOURS = Array.from({ length: 24 }, (_, i) => i)
+
+function cellColor(norm: number): string {
+  // Hard thresholds — guaranteed crisp, no interpolation artifacts
+  if (norm >= 0.5) {
+    // Business hours: bright teal
+    const t = Math.min(1, (norm - 0.5) / 0.5)
+    const r = Math.round(26 + t * (45 - 26))
+    const g = Math.round(122 + t * (212 - 122))
+    const b = Math.round(106 + t * (168 - 106))
+    return `rgb(${r},${g},${b})`
+  } else if (norm >= 0.08) {
+    // Shoulder (evening, Saturday): very dark teal
+    return '#0f2420'
+  } else {
+    // Nights / Sunday: near-black
+    return '#0b100f'
+  }
+}
 
 export default function TemporalHeatmap({ data }: TemporalHeatmapProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const svgRef = useRef<SVGSVGElement>(null)
-  const [dimensions, setDimensions] = useState({ width: 600 })
-  const [tooltip, setTooltip] = useState<{
-    value: number
-    day: string
-    hour: number
-    x: number
-    y: number
-  } | null>(null)
+  const [tooltip, setTooltip] = useState<{ day: string; hour: number; value: number } | null>(null)
 
-  const updateDimensions = useCallback(() => {
-    if (containerRef.current) {
-      const { width } = containerRef.current.getBoundingClientRect()
-      setDimensions({ width })
-    }
-  }, [])
-
-  useEffect(() => {
-    updateDimensions()
-    const container = containerRef.current
-    if (!container) return
-
-    const observer = new ResizeObserver(() => updateDimensions())
-    observer.observe(container)
-    return () => observer.disconnect()
-  }, [updateDimensions])
-
-  useEffect(() => {
-    if (!svgRef.current || !data?.length) return
-
-    const { width: containerWidth } = dimensions
-
-    const availWidth = containerWidth - PADDING.left - PADDING.right
-    const cellSize = Math.max(4, Math.floor(availWidth / 24))
-    const cellGap = 2
-
-    const gridWidth = cellSize * 24
-    const gridHeight = cellSize * 7
-    const totalWidth = gridWidth + PADDING.left + PADDING.right
-    const totalHeight = gridHeight + PADDING.top + PADDING.bottom
-
-    // Flatten data to find extent
-    const allValues = data.flat()
-    const maxVal = d3.max(allValues) ?? 1
-
-    // Hard threshold color mapping — guarantees crisp, unambiguous visual pattern.
-    // Business hours (>0.5) → bright teal, weekends (0.05-0.2) → very dark, nights (<0.05) → black
-    const cellColor = (v: number): string => {
-      const norm = maxVal > 0 ? v / maxVal : 0
-      if (norm >= 0.5) {
-        // Business hours: interpolate through bright teal spectrum
-        const t = (norm - 0.5) / 0.5  // 0→1 within the bright range
-        return d3.interpolateRgb('#1a7a6a', '#2dd4a8')(t)
-      } else if (norm >= 0.08) {
-        // Shoulder / Saturday: dark muted teal
-        const t = (norm - 0.08) / 0.42
-        return d3.interpolateRgb('#0d1f1c', '#1a3a34')(t)
-      } else {
-        // Nights / Sunday: near-black
-        return '#0a0f0e'
-      }
-    }
-
-    const svg = d3.select(svgRef.current)
-    svg.selectAll('*').remove()
-
-    svg
-      .attr('width', totalWidth)
-      .attr('height', totalHeight)
-      .attr('viewBox', `0 0 ${totalWidth} ${totalHeight}`)
-
-    const g = svg.append('g').attr('transform', `translate(${PADDING.left}, ${PADDING.top})`)
-
-    // Hour labels (top)
-    g.selectAll('.hour-label')
-      .data(d3.range(24))
-      .enter()
-      .append('text')
-      .attr('x', (d) => d * cellSize + cellSize / 2)
-      .attr('y', -8)
-      .attr('text-anchor', 'middle')
-      .attr('fill', '#888888')
-      .attr('font-family', "'JetBrains Mono', monospace")
-      .attr('font-size', Math.min(9, cellSize * 0.5) + 'px')
-      .text((d) => (d % 3 === 0 ? String(d) : ''))
-
-    // Day labels (left)
-    g.selectAll('.day-label')
-      .data(DAYS)
-      .enter()
-      .append('text')
-      .attr('x', -8)
-      .attr('y', (_, i) => i * cellSize + cellSize / 2)
-      .attr('text-anchor', 'end')
-      .attr('dominant-baseline', 'middle')
-      .attr('fill', '#888888')
-      .attr('font-family', "'JetBrains Mono', monospace")
-      .attr('font-size', Math.min(10, cellSize * 0.55) + 'px')
-      .text((d) => d)
-
-    // Cells
-    for (let row = 0; row < Math.min(data.length, 7); row++) {
-      const rowData = data[row] || []
-      for (let col = 0; col < 24; col++) {
-        const value = rowData[col] ?? 0
-
-        g.append('rect')
-          .attr('x', col * cellSize + cellGap / 2)
-          .attr('y', row * cellSize + cellGap / 2)
-          .attr('width', cellSize - cellGap)
-          .attr('height', cellSize - cellGap)
-          .attr('rx', 2)
-          .attr('fill', cellColor(value))
-          .attr('stroke', value > 0 ? cellColor(value) : 'transparent')
-          .attr('stroke-width', 0.5)
-          .attr('stroke-opacity', 0.3)
-          .style('cursor', 'crosshair')
-          .on('mouseenter', function (event) {
-            d3.select(this)
-              .attr('stroke', '#eaeaea')
-              .attr('stroke-width', 1.5)
-              .attr('stroke-opacity', 1)
-
-            const rect = svgRef.current!.getBoundingClientRect()
-            setTooltip({
-              value,
-              day: DAYS[row],
-              hour: col,
-              x: event.clientX - rect.left,
-              y: event.clientY - rect.top,
-            })
-          })
-          .on('mouseleave', function () {
-            d3.select(this)
-              .attr('stroke', value > 0 ? cellColor(value) : 'transparent')
-              .attr('stroke-width', 0.5)
-              .attr('stroke-opacity', 0.3)
-            setTooltip(null)
-          })
-      }
-    }
-  }, [data, dimensions])
-
-  if (!data?.length) {
-    return (
-      <div className="flex h-48 items-center justify-center rounded-xl border border-border bg-surface">
-        <p className="font-mono text-sm text-muted">No heatmap data</p>
-      </div>
-    )
-  }
+  const maxVal = Math.max(...data.flat(), 0.001)
 
   return (
-    <div
-      ref={containerRef}
-      className="relative w-full overflow-hidden"
-    >
-      <svg ref={svgRef} className="w-full" />
+    <div className="relative w-full select-none">
+      {/* Hour axis */}
+      <div className="flex mb-1 pl-10">
+        {HOURS.map(h => (
+          <div
+            key={h}
+            className="flex-1 text-center"
+            style={{ fontSize: '9px', color: '#666', fontFamily: 'monospace' }}
+          >
+            {h % 3 === 0 ? h : ''}
+          </div>
+        ))}
+      </div>
+
+      {/* Grid */}
+      {DAYS.map((day, row) => {
+        const rowData = data[row] || new Array(24).fill(0)
+        return (
+          <div key={day} className="flex items-center mb-0.5">
+            {/* Day label */}
+            <div
+              className="w-10 shrink-0 text-right pr-2"
+              style={{ fontSize: '10px', color: '#666', fontFamily: 'monospace' }}
+            >
+              {day}
+            </div>
+            {/* Cells */}
+            {HOURS.map(col => {
+              const value = rowData[col] ?? 0
+              const norm = value / maxVal
+              const bg = cellColor(norm)
+              return (
+                <div
+                  key={col}
+                  className="flex-1 rounded-sm cursor-crosshair"
+                  style={{
+                    height: '22px',
+                    marginRight: '1px',
+                    backgroundColor: bg,
+                  }}
+                  onMouseEnter={() => setTooltip({ day, hour: col, value })}
+                  onMouseLeave={() => setTooltip(null)}
+                />
+              )
+            })}
+          </div>
+        )
+      })}
+
       {/* Legend */}
-      <div className="mt-3 flex items-center gap-2 px-1">
-        <span className="text-[10px] font-mono" style={{ color: '#888888' }}>less</span>
+      <div className="mt-3 flex items-center gap-2 pl-10">
+        <span style={{ fontSize: '10px', color: '#666', fontFamily: 'monospace' }}>less</span>
         <div className="flex gap-0.5">
-          {['#0a0f0e','#0d1f1c','#1a3a34','#1a6a5a','#1a7a6a','#2dd4a8'].map((c, i) => (
-            <div key={i} className="w-5 h-3 rounded-sm" style={{ backgroundColor: c }} />
+          {[0, 0.04, 0.1, 0.5, 0.75, 1.0].map((v, i) => (
+            <div
+              key={i}
+              className="w-5 h-3 rounded-sm"
+              style={{ backgroundColor: cellColor(v) }}
+            />
           ))}
         </div>
-        <span className="text-[10px] font-mono" style={{ color: '#888888' }}>more</span>
+        <span style={{ fontSize: '10px', color: '#666', fontFamily: 'monospace' }}>more</span>
       </div>
+
+      {/* Tooltip */}
       {tooltip && (
         <div
           className="pointer-events-none absolute z-50 rounded-md border border-[--border] bg-[--surface-2] px-3 py-2 shadow-xl"
-          style={{ left: tooltip.x + 12, top: tooltip.y - 40 }}
+          style={{ left: '50%', bottom: '100%', transform: 'translateX(-50%)', marginBottom: '4px' }}
         >
-          <div className="font-mono text-[10px] text-[--muted]">
-            {tooltip.day}, {String(tooltip.hour).padStart(2, '0')}:00
-          </div>
-          <div className="font-mono text-sm font-semibold text-[--accent]">
-            {tooltip.value > 0 ? `${(tooltip.value * 100).toFixed(1)}% activity` : 'No activity'}
-          </div>
+          <p className="font-mono text-xs text-[--text]">
+            {tooltip.day} @ {String(tooltip.hour).padStart(2, '0')}:00
+          </p>
+          <p className="font-mono text-xs text-[--accent]">
+            activity: {(tooltip.value * 100).toFixed(0)}%
+          </p>
         </div>
       )}
     </div>
   )
 }
 
-export const _VERSION = '1774138325'
+export const _VERSION = '20260322-css-grid'
