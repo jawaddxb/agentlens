@@ -2,7 +2,7 @@
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmds = ["npm install"]
+cmds = ["npm ci --prefer-offline || npm install"]
 
 [phases.build]
 cmds = ["npm run build", "cp -r .next/static .next/standalone/.next/static", "cp -r public .next/standalone/public"]
@@ -10,4 +10,4 @@ cmds = ["npm run build", "cp -r .next/static .next/standalone/.next/static", "cp
 [start]
 cmd = "node .next/standalone/server.js"
 
-# cache-bust: 1774137105
+# cache-bust: 1774140000-v2
