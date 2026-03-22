@@ -195,3 +195,5 @@ export default function TemporalHeatmap({ data }: TemporalHeatmapProps) {
     </div>
   )
 }
+
+export const _VERSION = '1774138325'
